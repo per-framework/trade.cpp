@@ -1,0 +1,20 @@
+[submodule ".cppsm"]
+	path = .cppsm
+	url = https://github.com/cppsm/cppsm-boilerplate.git
+	branch = master
+[submodule "requires/polyfill.cpp/v1"]
+	path = requires/polyfill.cpp/v1
+	url = https://github.com/per-framework/polyfill.cpp.git
+	branch = v1
+[submodule "equipment/testing.cpp/v1"]
+	path = equipment/testing.cpp/v1
+	url = https://github.com/per-framework/testing.cpp.git
+	branch = v1
+[submodule "requires/intrinsics.cpp/v1"]
+	path = requires/intrinsics.cpp/v1
+	url = https://github.com/per-framework/intrinsics.cpp.git
+	branch = v1
+[submodule "requires/dumpster.cpp/v1"]
+	path = requires/dumpster.cpp/v1
+	url = https://github.com/per-framework/dumpster.cpp.git
+	branch = v1
