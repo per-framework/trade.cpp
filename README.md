@@ -21,6 +21,7 @@ implementation written for testing purposes.
 ## <a id="contents"></a> [≡](#contents) [Contents](#contents)
 
 - [Overview](#overview)
+  - [Building](#building)
   - [Basics](#basics)
   - [Side-effects](#side-effects)
   - [Nesting](#nesting)
@@ -34,6 +35,32 @@ implementation written for testing purposes.
 - [TODO](#todo)
 
 ## <a id="overview"></a> [≡](#contents) [Overview](#overview)
+
+### <a id="building"></a> [≡](#contents) [Building](#building)
+
+This project uses the [C++ submodule manager](https://cppsm.github.io/). If you
+have the `cppsm` command in path, you can just clone and test this project:
+
+```bash
+cppsm clone "git@github.com:per-framework/trade.cpp.git" v1
+cd trade.cpp
+cppsm test
+```
+
+Without the [C++ submodule manager](https://cppsm.github.io/) you need to
+non-recursively update the submodules after cloning and use
+[CMake](https://cmake.org/) to e.g. generate makefiles and use
+[make](https://www.gnu.org/software/make/) to build and test:
+
+```bash
+git clone git@github.com:per-framework/trade.cpp.git
+cd trade.cpp
+git submodule update --init
+mkdir .build
+cd .build
+cmake ..
+make all test
+```
 
 ### <a id="basics"></a> [≡](#contents) [Basics](#basics)
 
@@ -295,8 +322,6 @@ transaction.
 
 ## <a id="todo"></a> [≡](#contents) [TODO](#todo)
 
-- Briefly document how to take the library into use with or without
-  [cppsm](https://cppsm.github.io/)
 - Bypass destroy logic in cases where it is not needed
 - Relax storage of `atom` values such that when the type is
   [TriviallyCopyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable)
