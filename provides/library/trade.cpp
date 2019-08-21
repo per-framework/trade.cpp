@@ -26,7 +26,7 @@ struct trade_v1::Private::Static {
     while (true) {
       auto u = lock.m_clock.load(std::memory_order_relaxed);
       if (~u < u) {
-        intrinsics_v1::pause();
+        intrinsics::pause();
         continue;
       }
 

@@ -269,10 +269,12 @@ is considered in nested transactions.
 ### <a id="atomic-types-only"></a> [≡](#contents) [Atomic types only](#atomic-types-only)
 
 The type argument `T` of `atom<T>` must also be allowed as an argument to
-`std::atomic` &mdash; an atom stores the value in a `std::atomic<T>`. This
-allows specializations of `std::atomic<T>` to provide the necessary atomicity
-guarantees when multiple threads may simultaneously access the value stored in
-an atom.
+`std::atomic`. Unless the type `T` is
+[TriviallyCopyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable)
+and `std::atomic<T>` is not always lock-free, an atom stores the value in a
+`std::atomic<T>`. This allows efficient implementation of the necessary
+atomicity guarantees when multiple threads may simultaneously access the value
+stored in an atom.
 
 ### <a id="exceptions"></a> [≡](#contents) [Exceptions](#exceptions)
 
@@ -305,8 +307,8 @@ transaction.
 
 - The hash computation adds some overhead to every access.
 
-- On the other hand, the size of an individual atom is the same as
-  `std::atomic`, which is practically optimal.
+- On the other hand, the size of an `atom<T>` is not larger than the size of
+  `std::atomic<T>`, which is practically optimal.
 
 - Adds a `retry` capability for blocking. This also takes minor advantage of the
   use of hashed locks.
@@ -323,9 +325,6 @@ transaction.
 ## <a id="todo"></a> [≡](#contents) [TODO](#todo)
 
 - Bypass destroy logic in cases where it is not needed
-- Relax storage of `atom` values such that when the type is
-  [TriviallyCopyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable)
-  then it won't be wrapped inside `std::atomic`
 - Add optional diagnostics code to e.g. detect bad behaviours
 - Allow transaction clock to wrap around &mdash; this would allow the use of a
   32-bit (or `size_t`) clock
