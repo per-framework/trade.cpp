@@ -1,2 +1,2 @@
-add_conventional_library(toys PUBLIC trade_v1)
-add_conventional_executable_tests(PRIVATE toys trade_v1 testing_v1 std_thread)
+add_conventional_library(testing PUBLIC trade_v1)
+add_conventional_executable_tests(PRIVATE testing trade_v1 testing_v1 std_thread)
