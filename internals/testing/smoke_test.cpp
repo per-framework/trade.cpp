@@ -11,6 +11,7 @@ auto smoke_test = test([]() {
   atom<int> xA = 1;
   atom<float> yA = 2.f;
   atom<int> zA = 3;
+  atom<std::shared_ptr<int>> p(std::make_shared<int>(32));
 
   verify(atomically(assume_readonly, []() { return true; }));
 
@@ -51,21 +52,34 @@ auto smoke_test = test([]() {
     verify(1 == zA.unsafe_load());
   }
 
-  {
-    atom<std::shared_ptr<int>> p(std::make_shared<int>(32));
-
-    verify(!!p.unsafe_load());
-  }
+  { verify(!!p.unsafe_load()); }
 
   {
     struct TriviallyCopyable {
       int x;
       double y;
+      size_t z;
     };
 
-    atom<TriviallyCopyable> p({3, 0.14});
+    static_assert(!std::atomic<TriviallyCopyable>::is_always_lock_free);
 
-    verify(p.unsafe_load().x == 3);
-    verify(p.unsafe_load().y == 0.14);
+    atom<TriviallyCopyable> tc({3, 0.14, 592});
+
+    verify(tc.unsafe_load().x == 3);
+    verify(tc.unsafe_load().y == 0.14);
+    verify(tc.unsafe_load().z == 592);
+  }
+
+  {
+    verify(*p.unsafe_load() + xA.unsafe_load() ==
+           atomically(heap(4), [&]() { return *p.load() + xA; }));
+  }
+
+  {
+    try {
+      verify(p.unsafe_load() !=
+             atomically(stack<1>, [&]() { return p.load(); }));
+    } catch (const std::bad_alloc &) {
+    }
   }
 });

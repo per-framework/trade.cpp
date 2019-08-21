@@ -70,12 +70,21 @@ auto dynamic_test = test([]() {
     }).detach();
   }
 
-  while (n_threads_stopped != n_threads)
-    atomically(assume_readonly, [&]() {
-      // We must not be able observe an invalid queue size inside a transaction:
-      size_t n = queues[0].size() + queues[1].size();
-      verify(n == n_values);
-    });
+  {
+    size_t i = 0;
+    while (n_threads_stopped != n_threads) {
+      atomically(assume_readonly, [&]() {
+        // We must not be able observe an invalid queue size inside a
+        // transaction:
+        size_t n0 = queues[0].size();
+        size_t n1 = queues[1].size();
+        verify(n0 + n1 == n_values);
+        if (i & 8)
+          queues[!(n0 < n1)].push_back(queues[n0 < n1].pop_front());
+      });
+      i += 1;
+    }
+  }
 
   while (auto v = queues[1].try_pop_front())
     queues[0].push_back(v.value());
@@ -90,23 +99,25 @@ auto dynamic_test = test([]() {
     queue_t<int> q;
     q.push_back(1);
 
-    try {
-      atomically([&]() {
-        q.push_back(2);
-        throw 101;
-      });
-      verify(false);
-    } catch (int v) {
-      verify(v == 101);
+    {
+      int result = 0;
+      try {
+        atomically([&]() {
+          q.push_back(2);
+          throw 101;
+        });
+      } catch (int v) {
+        result = v;
+      }
+      verify(result == 101);
     }
 
     try {
-      atomically([&]() -> bool {
+      verify(atomically([&]() -> bool {
         if (q.try_pop_front())
           throw 42;
         return false;
-      });
-      verify(false);
+      }));
     } catch (int v) {
       verify(v == 42);
     }
