@@ -1,2 +1,2 @@
 add_conventional_library(trade_v1)
-target_link_libraries(trade_v1 PUBLIC polyfill_v1 dumpster_v1 PRIVATE intrinsics_v1)
+target_link_libraries(trade_v1 PUBLIC dumpster_v1 intrinsics_v1 polyfill_v1)

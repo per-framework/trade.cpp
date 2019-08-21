@@ -1,6 +1,6 @@
 #include "trade_v1/trade.hpp"
 
-#include <memory>
+#include "polyfill_v1/memory.hpp"
 
 #include "testing_v1/test.hpp"
 
@@ -49,5 +49,23 @@ auto smoke_test = test([]() {
     verify(3 == xA.unsafe_load());
     verify(2 == yA.unsafe_load());
     verify(1 == zA.unsafe_load());
+  }
+
+  {
+    atom<std::shared_ptr<int>> p(std::make_shared<int>(32));
+
+    verify(!!p.unsafe_load());
+  }
+
+  {
+    struct TriviallyCopyable {
+      int x;
+      double y;
+    };
+
+    atom<TriviallyCopyable> p({3, 0.14});
+
+    verify(p.unsafe_load().x == 3);
+    verify(p.unsafe_load().y == 0.14);
   }
 });

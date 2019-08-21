@@ -6,9 +6,31 @@
 
 #include "dumpster_v1/finally.hpp"
 
+#include "intrinsics_v1/pause.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <utility>
+
+//
+
+template <class Value> trade_v1::Private::non_atomic_t<Value>::non_atomic_t() {}
+
+template <class Value>
+trade_v1::Private::non_atomic_t<Value>::non_atomic_t(const Value &value)
+    : m_value(value) {}
+
+template <class Value>
+void trade_v1::Private::non_atomic_t<Value>::store(const Value &value,
+                                                   std::memory_order) {
+  m_value = value;
+}
+
+template <class Value>
+const Value &
+trade_v1::Private::non_atomic_t<Value>::load(std::memory_order) const {
+  return m_value;
+}
 
 //
 
@@ -128,7 +150,7 @@ void trade_v1::Private::destroy(clock_t t, access_base_t *access_base) {
   auto access = static_cast<access_t<Value> *>(access_base);
   if (t) {
     auto atom = static_cast<atom_t<Value> *>(access->m_atom);
-    atom->m_value.store(access->m_current);
+    atom->m_value.store(access->m_current, std::memory_order_relaxed);
     auto &lock = s_locks[access->m_lock_ix];
 
     auto count = lock.m_count;
@@ -222,7 +244,20 @@ Value trade_v1::Private::load(const atom_t<Value> &atom) {
 
 template <class Value>
 Value trade_v1::Private::unsafe_load(const atom_t<Value> &atom) {
-  return atom.m_value;
+  if (Private::atom_t<Value>::is_atomic) {
+    return atom.m_value.load(std::memory_order_relaxed);
+  } else {
+    auto &lock = s_locks[lock_ix_of(&atom)];
+    while (true) {
+      auto s = lock.m_clock.load();
+      if (s < ~s) {
+        Value result = atom.m_value.load();
+        if (s == lock.m_clock.load())
+          return result;
+      }
+      intrinsics::pause();
+    }
+  }
 }
 
 template <class Value, class Forwardable>
