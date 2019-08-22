@@ -50,20 +50,16 @@ struct trade_v1::Private::Static {
                                     ~align_m1);
   }
 
-  static access_base_t *
-  alloc(transaction_base_t *transaction, size_t align_m1, size_t size) {
-    auto start = align_to(align_m1, transaction->m_alloc);
+  static access_base_t *alloc_align(transaction_base_t *transaction,
+                                    size_t align_m1) {
+    return static_cast<access_base_t *>(
+        align_to(align_m1, transaction->m_alloc));
+  }
 
-    if (transaction->m_limit <
-        (transaction->m_alloc = static_cast<uint8_t *>(start) + size))
-      return nullptr;
-
-    auto access = static_cast<access_base_t *>(start);
-    transaction->m_accesses = access;
-
-    access->m_state = INITIAL;
-
-    return access;
+  static bool
+  alloc_limit(transaction_base_t *transaction, void *start, size_t size) {
+    return (transaction->m_alloc = static_cast<uint8_t *>(start) + size) <=
+           transaction->m_limit;
   }
 
   static void wait(clock_t t, signal_t &signal, access_base_t *root) {
@@ -145,24 +141,132 @@ trade_v1::Private::insert(transaction_base_t *transaction,
   auto access_ix = lock_ix_of(access_atom);
 
   if (!root) {
-    if (auto access = Static::alloc(transaction, align_m1, size)) {
+    auto access = Static::alloc_align(transaction, align_m1);
+    if (Static::alloc_limit(transaction, access, size)) {
       access->m_children[0] = nullptr;
       access->m_children[1] = nullptr;
       access->m_atom = access_atom;
+      access->m_state = INITIAL;
       access->m_lock_ix = access_ix;
-      return access;
+      return transaction->m_accesses = access;
     } else {
       throw transaction;
     }
   }
 
+  if (access_atom == root->m_atom)
+    return root;
+
   access_base_t *side_root[2];
   access_base_t **side_near[2] = {&side_root[0], &side_root[1]};
 
   while (true) {
-    auto root_ix = root->m_lock_ix;
+    if (access_ix <= root->m_lock_ix &&
+        (access_ix != root->m_lock_ix || access_atom < root->m_atom)) {
+      auto next = root->m_children[0];
 
-    if (access_ix == root_ix && access_atom == root->m_atom) {
+      if (!next) {
+        *side_near[0] = nullptr;
+        *side_near[1] = root->m_children[1];
+        root->m_children[1] = side_root[1];
+        auto access = Static::alloc_align(transaction, align_m1);
+        if (Static::alloc_limit(transaction, access, size)) {
+          access->m_children[0] = side_root[0];
+          access->m_children[1] = root;
+          access->m_atom = access_atom;
+          access->m_state = INITIAL;
+          access->m_lock_ix = access_ix;
+          return transaction->m_accesses = access;
+        } else {
+          root->m_children[0] = side_root[0];
+          transaction->m_accesses = root;
+          throw transaction;
+        }
+      }
+
+      if (access_ix <= next->m_lock_ix &&
+          (access_ix != next->m_lock_ix || access_atom < next->m_atom)) {
+        root->m_children[0] = next->m_children[1];
+        next->m_children[1] = root;
+        root = next;
+        next = root->m_children[0];
+
+        if (!next) {
+          *side_near[0] = nullptr;
+          *side_near[1] = root;
+          auto access = Static::alloc_align(transaction, align_m1);
+          if (Static::alloc_limit(transaction, access, size)) {
+            access->m_children[0] = side_root[0];
+            access->m_children[1] = side_root[1];
+            access->m_atom = access_atom;
+            access->m_state = INITIAL;
+            access->m_lock_ix = access_ix;
+            return transaction->m_accesses = access;
+          } else {
+            root->m_children[0] = side_root[0];
+            transaction->m_accesses = side_root[1];
+            throw transaction;
+          }
+        }
+      }
+
+      *side_near[1] = root;
+      side_near[1] = &root->m_children[0];
+      root = next;
+    } else {
+      auto next = root->m_children[1];
+
+      if (!next) {
+        *side_near[0] = root->m_children[0];
+        *side_near[1] = nullptr;
+        root->m_children[0] = side_root[0];
+        auto access = Static::alloc_align(transaction, align_m1);
+        if (Static::alloc_limit(transaction, access, size)) {
+          access->m_children[0] = root;
+          access->m_children[1] = side_root[1];
+          access->m_atom = access_atom;
+          access->m_state = INITIAL;
+          access->m_lock_ix = access_ix;
+          return transaction->m_accesses = access;
+        } else {
+          root->m_children[1] = side_root[1];
+          transaction->m_accesses = root;
+          throw transaction;
+        }
+      }
+
+      if (access_ix >= next->m_lock_ix &&
+          (access_ix != next->m_lock_ix || access_atom > next->m_atom)) {
+        root->m_children[1] = next->m_children[0];
+        next->m_children[0] = root;
+        root = next;
+        next = root->m_children[1];
+
+        if (!next) {
+          *side_near[0] = root;
+          *side_near[1] = nullptr;
+          auto access = Static::alloc_align(transaction, align_m1);
+          if (Static::alloc_limit(transaction, access, size)) {
+            access->m_children[0] = side_root[0];
+            access->m_children[1] = side_root[1];
+            access->m_atom = access_atom;
+            access->m_state = INITIAL;
+            access->m_lock_ix = access_ix;
+            return transaction->m_accesses = access;
+          } else {
+            root->m_children[1] = side_root[1];
+            transaction->m_accesses = side_root[0];
+            throw transaction;
+          }
+        }
+      }
+
+      *side_near[0] = root;
+      side_near[0] = &root->m_children[1];
+      root = next;
+    }
+
+    if (access_atom == root->m_atom) {
       transaction->m_accesses = root;
 
       *side_near[0] = root->m_children[0];
@@ -171,129 +275,6 @@ trade_v1::Private::insert(transaction_base_t *transaction,
       root->m_children[1] = side_root[1];
 
       return root;
-    }
-
-    if (access_ix < root_ix ||
-        (access_ix == root_ix && access_atom < root->m_atom)) {
-      constexpr int o = 1, n = 0;
-
-      auto next = root->m_children[n];
-
-      if (!next) {
-        if (auto access = Static::alloc(transaction, align_m1, size)) {
-          *side_near[n] = nullptr;
-          *side_near[o] = root->m_children[o];
-          root->m_children[o] = side_root[o];
-
-          access->m_children[n] = side_root[n];
-          access->m_children[o] = root;
-          access->m_atom = access_atom;
-          access->m_lock_ix = access_ix;
-
-          return access;
-        } else {
-          *side_near[n] = nullptr;
-          *side_near[o] = root;
-          root->m_children[n] = side_root[n];
-          transaction->m_accesses = side_root[o];
-          throw transaction;
-        }
-      }
-
-      auto next_ix = next->m_lock_ix;
-
-      if (access_ix < next_ix ||
-          (access_ix == next_ix && access_atom < next->m_atom)) {
-        root->m_children[n] = next->m_children[o];
-        next->m_children[o] = root;
-        root = next;
-        next = root->m_children[n];
-
-        if (!next) {
-          if (auto access = Static::alloc(transaction, align_m1, size)) {
-            *side_near[o] = root;
-            root->m_children[n] = nullptr;
-            *side_near[n] = nullptr;
-
-            access->m_children[0] = side_root[0];
-            access->m_children[1] = side_root[1];
-            access->m_atom = access_atom;
-            access->m_lock_ix = access_ix;
-
-            return access;
-          } else {
-            *side_near[n] = nullptr;
-            *side_near[o] = root;
-            root->m_children[n] = side_root[n];
-            transaction->m_accesses = side_root[o];
-            throw transaction;
-          }
-        }
-      }
-
-      *side_near[o] = root;
-      side_near[o] = &root->m_children[n];
-      root = next;
-    } else {
-      constexpr int o = 0, n = 1;
-
-      auto next = root->m_children[n];
-
-      if (!next) {
-        if (auto access = Static::alloc(transaction, align_m1, size)) {
-          *side_near[n] = nullptr;
-          *side_near[o] = root->m_children[o];
-          root->m_children[o] = side_root[o];
-
-          access->m_children[n] = side_root[n];
-          access->m_children[o] = root;
-          access->m_atom = access_atom;
-          access->m_lock_ix = access_ix;
-
-          return access;
-        } else {
-          *side_near[n] = nullptr;
-          *side_near[o] = root;
-          root->m_children[n] = side_root[n];
-          transaction->m_accesses = side_root[o];
-          throw transaction;
-        }
-      }
-
-      auto next_ix = next->m_lock_ix;
-
-      if (access_ix > next_ix ||
-          (access_ix == next_ix && access_atom > next->m_atom)) {
-        root->m_children[n] = next->m_children[o];
-        next->m_children[o] = root;
-        root = next;
-        next = root->m_children[n];
-
-        if (!next) {
-          if (auto access = Static::alloc(transaction, align_m1, size)) {
-            *side_near[o] = root;
-            root->m_children[n] = nullptr;
-            *side_near[n] = nullptr;
-
-            access->m_children[0] = side_root[0];
-            access->m_children[1] = side_root[1];
-            access->m_atom = access_atom;
-            access->m_lock_ix = access_ix;
-
-            return access;
-          } else {
-            *side_near[n] = nullptr;
-            *side_near[o] = root;
-            root->m_children[n] = side_root[n];
-            transaction->m_accesses = side_root[o];
-            throw transaction;
-          }
-        }
-      }
-
-      *side_near[o] = root;
-      side_near[o] = &root->m_children[n];
-      root = next;
     }
   }
 }
