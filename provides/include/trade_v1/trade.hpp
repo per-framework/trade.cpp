@@ -262,9 +262,7 @@ Value trade_v1::Private::unsafe_load(const atom_t<Value> &atom) {
 
 template <class Value, class Forwardable>
 Value &trade_v1::Private::store(atom_t<Value> &atom, Forwardable &&value) {
-  auto transaction = s_transaction;
-
-  auto access = insert(transaction, &atom);
+  auto access = insert(s_transaction, &atom);
   switch (access->m_state) {
   case INITIAL:
     new (&access->m_current) Value(std::forward<Forwardable>(value));
