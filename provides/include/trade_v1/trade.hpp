@@ -206,6 +206,10 @@ template <class Value> Value trade_v1::atom<Value>::unsafe_load() const {
   return Private::unsafe_load(*this);
 }
 
+template <class Value> Value &trade_v1::atom<Value>::ref() {
+  return Private::ref(*this);
+}
+
 template <class Value>
 template <class Forwardable>
 Value &trade_v1::atom<Value>::operator=(Forwardable &&value) {
@@ -280,6 +284,29 @@ Value &trade_v1::Private::store(atom_t<Value> &atom, Forwardable &&value) {
     [[fallthrough]];
   default:
     access->m_current = std::forward<Forwardable>(value);
+  }
+  return access->m_current;
+}
+
+template <class Value> Value &trade_v1::Private::ref(atom_t<Value> &atom) {
+  auto transaction = s_transaction;
+  auto access = insert(transaction, &atom);
+  switch (access->m_state) {
+  case INITIAL: {
+    access->m_destroy = destroy<Value>;
+    auto &lock = s_locks[access->m_lock_ix];
+    auto s = lock.m_clock.load();
+    if (transaction->m_start < s)
+      throw transaction;
+    new (&access->m_current) Value(atom.m_value.load());
+    access->m_state = READ;
+    if (s != lock.m_clock.load())
+      throw transaction;
+    [[fallthrough]];
+  }
+  case READ:
+    access->retain();
+    access->m_state = READ + WRITTEN;
   }
   return access->m_current;
 }

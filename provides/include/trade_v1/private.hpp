@@ -91,6 +91,8 @@ class Private {
 
   template <class Value, class Forwardable>
   static Value &store(atom_t<Value> &atom, Forwardable &&value);
+
+  template <class Value> static Value &ref(atom_t<Value> &atom);
 };
 
 } // namespace trade_v1

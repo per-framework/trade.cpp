@@ -22,7 +22,7 @@ auto contention_test = test([]() {
 
   for (size_t t = 0; t < n_threads; ++t) {
     std::thread([&]() {
-      atomically([&]() { n_threads_started = n_threads_started + 1; });
+      atomically([&]() { n_threads_started.ref() += 1; });
       atomically([&]() {
         if (n_threads_started != n_threads)
           retry();
@@ -35,14 +35,13 @@ auto contention_test = test([]() {
           j = std::rand() % n_atoms;
 
         atomically(stack<128>, [&]() {
-          int x = atoms[i];
-          int y = atoms[j];
-          atoms[j] = x - 1;
-          atoms[i] = y + 1;
+          int &x = atoms[i].ref();
+          int &y = atoms[j].ref();
+          std::swap(--x, ++y);
         });
       }
 
-      atomically([&]() { n_threads_stopped = n_threads_stopped + 1; });
+      atomically([&]() { n_threads_stopped.ref() += 1; });
     }).detach();
   }
 

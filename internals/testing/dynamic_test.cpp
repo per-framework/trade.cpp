@@ -25,7 +25,7 @@ auto dynamic_test = test([]() {
 
   for (size_t t = 0; t < n_threads; ++t) {
     std::thread([&]() {
-      atomically([&]() { n_threads_started = n_threads_started + 1; });
+      atomically([&]() { n_threads_started.ref() += 1; });
       atomically([&]() {
         if (n_threads_started != n_threads)
           retry();
@@ -55,7 +55,7 @@ auto dynamic_test = test([]() {
           n -= 1;
       }
 
-      atomically([&]() { n_threads_stopped = n_threads_stopped + 1; });
+      atomically([&]() { n_threads_stopped.ref() += 1; });
     }).detach();
   }
 

@@ -23,6 +23,7 @@ implementation written for testing purposes.
 - [Overview](#overview)
   - [Building](#building)
   - [Basics](#basics)
+  - [Ref](#ref)
   - [Side-effects](#side-effects)
   - [Nesting](#nesting)
   - [Blocking](#blocking)
@@ -89,6 +90,22 @@ int sum = atomically([&]() {
 to atomically, with respect to other transactions, swap the values of `xA` and
 `yA` and compute their sum. Loads of and stores to atoms can only be made inside
 `atomically` blocks.
+
+### <a id="ref"></a> [≡](#contents) [Ref](#ref)
+
+As a convenience and optimization a mutable reference to the current value of an
+atom within a transaction can be obtained with `ref()`.
+
+For example, one could write
+
+```c++
+atomically([&]() { counter.ref() += 1; });
+```
+
+to increment the value of a `counter` atom.
+
+The returned reference is only valid within the transaction and can be used
+multiple times.
 
 ### <a id="side-effects"></a> [≡](#contents) [Side-effects](#side-effects)
 

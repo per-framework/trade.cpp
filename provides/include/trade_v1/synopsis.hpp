@@ -38,6 +38,11 @@ template <class Value> struct atom : Private::atom_t<Value> {
   /// value` is equivalent to `atom.store(value)`.
   template <class Forwardable> Value &store(Forwardable &&value);
 
+  /// Returns a mutable reference to the current value of the atom within a
+  /// transaction.  `atom.ref()` is roughly equivalent to
+  /// `atom.store(atom.load())`, but accesses the transaction log only once.
+  Value &ref();
+
   // Atoms are no larger than atomic values.
   static_assert(sizeof(Private::atom_t<Value>) <= sizeof(std::atomic<Value>));
 };
