@@ -23,10 +23,8 @@ auto contention_test = test([]() {
   constexpr size_t n_atoms = 7;
 
   atom<int> atoms[n_atoms];
-  atomically([&]() {
-    for (size_t i = 0; i < n_atoms; ++i)
-      atoms[i] = 0;
-  });
+  for (size_t i = 0; i < n_atoms; ++i)
+    atomically([&]() { atoms[i] = 0; });
 
   for (size_t t = 0; t < n_threads; ++t) {
     std::thread([&]() {
@@ -44,7 +42,7 @@ auto contention_test = test([]() {
         while (i == j)
           j = std::rand() % n_atoms;
 
-        atomically([&]() {
+        atomically(stack<128>, [&]() {
           int x = atoms[i];
           int y = atoms[j];
           atoms[j] = x - 1;
@@ -66,7 +64,7 @@ auto contention_test = test([]() {
       condition.wait(guard);
   }
 
-  auto [sum, non_zeroes] = atomically([&]() {
+  auto [sum, non_zeroes] = atomically(assume_readonly, [&]() {
     int sum = 0;
     int non_zeroes = 0;
 
