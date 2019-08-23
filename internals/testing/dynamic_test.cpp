@@ -3,8 +3,6 @@
 #include "testing_v1/test.hpp"
 
 #include <algorithm>
-#include <condition_variable>
-#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -17,10 +15,7 @@ auto dynamic_test = test([]() {
       std::max(std::thread::hardware_concurrency() - 1, 2u);
   const size_t n_ops = 10000;
 
-  std::mutex mutex;
-  std::condition_variable condition;
-
-  size_t n_threads_started = 0, n_threads_stopped = 0;
+  atom<size_t> n_threads_started = 0, n_threads_stopped = 0;
 
   queue_t<int> queues[2];
 
@@ -30,13 +25,11 @@ auto dynamic_test = test([]() {
 
   for (size_t t = 0; t < n_threads; ++t) {
     std::thread([&]() {
-      {
-        std::unique_lock<std::mutex> guard(mutex);
-        n_threads_started += 1;
-        condition.notify_all();
-        while (n_threads_started != n_threads)
-          condition.wait(guard);
-      }
+      atomically([&]() { n_threads_started = n_threads_started + 1; });
+      atomically([&]() {
+        if (n_threads_started != n_threads)
+          retry();
+      });
 
       size_t n = n_ops;
       while (n) {
@@ -62,17 +55,13 @@ auto dynamic_test = test([]() {
           n -= 1;
       }
 
-      {
-        std::unique_lock<std::mutex> guard(mutex);
-        n_threads_stopped += 1;
-        condition.notify_all();
-      }
+      atomically([&]() { n_threads_stopped = n_threads_stopped + 1; });
     }).detach();
   }
 
   {
     size_t i = 0;
-    while (n_threads_stopped != n_threads) {
+    while (n_threads_stopped.unsafe_load() != n_threads) {
       atomically(assume_readonly, [&]() {
         // We must not be able observe an invalid queue size inside a
         // transaction:
