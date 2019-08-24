@@ -53,9 +53,11 @@ struct trade_v1::Private::access_t<Value, false> : access_base_t {
 
   void retain() { new (&m_original) Value(std::move(m_current)); }
   void destroy() {
-    m_current.~Value();
-    if (READ + WRITTEN == m_state)
-      m_original.~Value();
+    if (INITIAL != m_state) {
+      m_current.~Value();
+      if (READ + WRITTEN == m_state)
+        m_original.~Value();
+    }
   }
 };
 
@@ -219,22 +221,25 @@ Value &trade_v1::atom<Value>::store(Forwardable &&value) {
 template <class Value>
 Value trade_v1::Private::load(const atom_t<Value> &atom) {
   auto transaction = s_transaction;
-  auto &lock = s_locks[lock_ix_of(&atom)];
-  auto s = lock.m_clock.load();
-  if (transaction->m_start < s)
-    throw transaction;
-
   if (transaction->m_alloc) {
     auto access = insert(transaction, const_cast<atom_t<Value> *>(&atom));
     if (access->m_state == INITIAL) {
-      new (&access->m_current) Value(atom.m_value.load());
       access->m_destroy = destroy<Value>;
+      auto &lock = s_locks[access->m_lock_ix];
+      auto s = lock.m_clock.load();
+      if (transaction->m_start < s)
+        throw transaction;
+      new (&access->m_current) Value(atom.m_value.load());
       access->m_state = READ;
       if (s != lock.m_clock.load())
         throw transaction;
     }
     return access->m_current;
   } else {
+    auto &lock = s_locks[lock_ix_of(&atom)];
+    auto s = lock.m_clock.load();
+    if (transaction->m_start < s)
+      throw transaction;
     Value result = atom.m_value.load();
     if (s != lock.m_clock.load())
       throw transaction;
