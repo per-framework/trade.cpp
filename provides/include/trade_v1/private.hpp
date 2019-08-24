@@ -36,7 +36,8 @@ class Private {
   template <class Value> class non_atomic_t;
 
   using clock_t = uint64_t;
-  using lock_ix_t = uint16_t;
+  using signed_clock_t = int64_t;
+  using lock_ix_t = int16_t;
 
   static constexpr lock_ix_t n_locks = 251;
 

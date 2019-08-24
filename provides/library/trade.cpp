@@ -25,7 +25,7 @@ struct trade_v1::Private::Static {
   static clock_t acquire(lock_t &lock) {
     while (true) {
       auto u = lock.m_clock.load(std::memory_order_relaxed);
-      if (~u < u) {
+      if (static_cast<signed_clock_t>(u) < 0) {
         intrinsics::pause();
         continue;
       }
@@ -125,9 +125,27 @@ struct trade_v1::Private::Static {
     }
   }
 
+  static void append_to(access_base_t **last, access_base_t *node) {
+    (*last)->m_children[1] = node;
+    *last = node;
+  }
+
   static void append_to(access_base_t ***tail, access_base_t *node) {
     **tail = node;
     *tail = &node->m_children[1];
+  }
+
+  static void unlock_and_destroy(access_base_t *it) {
+    while (it) {
+      auto ix = it->m_lock_ix;
+      if (0 <= ix) {
+        auto &lock = s_locks[ix];
+        Static::release(lock);
+      }
+      it->m_destroy(0, it);
+
+      it = it->m_children[1];
+    }
   }
 };
 
@@ -316,31 +334,31 @@ void trade_v1::Private::destroy(transaction_base_t *transaction) {
 bool trade_v1::Private::try_commit(transaction_base_t *transaction) {
   auto t = transaction->m_start;
 
-  access_base_t *writes;
-
-  bool success = true;
+  access_base_t writes;
+  writes.m_lock_ix = -1;
 
   {
     access_base_t *root = transaction->m_accesses;
 
-    access_base_t **writes_tail = &writes;
+    access_base_t *writes_last = &writes;
     access_base_t **reads_tail = &transaction->m_accesses;
 
     Static::destructively_in_order(root, [&](auto node) {
-      if (success && WRITTEN <= node->m_state) {
-        auto &lock = s_locks[node->m_lock_ix];
-        if (lock.m_owner.load(std::memory_order_relaxed) == transaction) {
-          lock.m_count += 1;
-          Static::append_to(&writes_tail, node);
+      if (writes_last && WRITTEN <= node->m_state) {
+        auto lock_ix = node->m_lock_ix;
+        if (lock_ix == writes_last->m_lock_ix) {
+          writes_last->m_lock_ix = -1;
+          Static::append_to(&writes_last, node);
         } else {
+          auto &lock = s_locks[node->m_lock_ix];
           auto s = lock.m_clock.load(std::memory_order_relaxed);
           if (t < s || !lock.m_clock.compare_exchange_strong(
                            s, ~s, std::memory_order_acquire)) {
-            success = false;
             Static::append_to(&reads_tail, node);
+            writes_last = writes_last->m_children[1] = nullptr;
+            Static::unlock_and_destroy(writes.m_children[1]);
           } else {
-            lock.m_owner.store(transaction, std::memory_order_relaxed);
-            Static::append_to(&writes_tail, node);
+            Static::append_to(&writes_last, node);
           }
         }
       } else {
@@ -348,44 +366,42 @@ bool trade_v1::Private::try_commit(transaction_base_t *transaction) {
       }
     });
 
-    *writes_tail = nullptr;
     *reads_tail = nullptr;
+
+    if (!writes_last)
+      return false;
+
+    writes_last->m_children[1] = nullptr;
   }
 
-  if (success) {
-    auto u = s_clock++;
+  auto u = s_clock++;
 
-    if (u != t) {
-      for (auto it = transaction->m_accesses; it; it = it->m_children[1]) {
-        auto &lock = s_locks[it->m_lock_ix];
-        if (t < lock.m_clock.load(std::memory_order_relaxed) &&
-            lock.m_owner.load(std::memory_order_relaxed) != transaction) {
-          success = false;
-          break;
+  if (u != t) {
+    auto wr = writes.m_children[1];
+    for (auto it = transaction->m_accesses; it; it = it->m_children[1]) {
+      auto ix = it->m_lock_ix;
+      auto &lock = s_locks[ix];
+      auto s = lock.m_clock.load(std::memory_order_relaxed);
+      if (s <= t)
+        continue;
+      if (static_cast<signed_clock_t>(s) < 0) {
+        while (wr) {
+          if (wr->m_lock_ix < ix) {
+            wr = wr->m_children[1];
+          } else if (wr->m_lock_ix == ix) {
+            break;
+          } else {
+            Static::unlock_and_destroy(writes.m_children[1]);
+            return false;
+          }
         }
       }
     }
-
-    if (success) {
-      u += 1;
-      for (auto it = writes; it; it = it->m_children[1])
-        it->m_destroy(u, it);
-    }
   }
 
-  if (!success) {
-    for (auto it = writes; it; it = it->m_children[1]) {
-      auto &lock = s_locks[it->m_lock_ix];
-      auto count = lock.m_count;
-      if (count) {
-        lock.m_count = count - 1;
-      } else {
-        lock.m_owner.store(nullptr, std::memory_order_relaxed);
-        Static::release(lock);
-      }
-      it->m_destroy(0, it);
-    }
-  }
+  u += 1;
+  for (auto it = writes.m_children[1]; it; it = it->m_children[1])
+    it->m_destroy(u, it);
 
-  return success;
+  return true;
 }

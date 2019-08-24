@@ -35,8 +35,6 @@ trade_v1::Private::non_atomic_t<Value>::load(std::memory_order) const {
 //
 
 struct trade_v1::Private::access_base_t {
-  ~access_base_t() = delete;
-
   access_base_t *m_children[2];
   atom_mono_t *m_atom;
   state_t m_state;
@@ -135,8 +133,6 @@ struct trade_v1::Private::waiter_t {
 
 struct trade_v1::Private::lock_t {
   std::atomic<clock_t> m_clock;
-  size_t m_count;
-  std::atomic<transaction_base_t *> m_owner;
   waiter_t *m_first;
 };
 
@@ -153,16 +149,11 @@ void trade_v1::Private::destroy(clock_t t, access_base_t *access_base) {
   if (t) {
     auto atom = static_cast<atom_t<Value> *>(access->m_atom);
     atom->m_value.store(access->m_current, std::memory_order_relaxed);
-    auto &lock = s_locks[access->m_lock_ix];
-
-    auto count = lock.m_count;
-    if (count) {
-      lock.m_count = count - 1;
-    } else {
+    auto ix = access->m_lock_ix;
+    if (0 <= ix) {
+      auto &lock = s_locks[ix];
       if (auto first = lock.m_first)
         signal(first);
-
-      lock.m_owner.store(nullptr, std::memory_order_relaxed);
       lock.m_clock.store(t, std::memory_order_release);
     }
   }
@@ -259,7 +250,7 @@ Value trade_v1::Private::unsafe_load(const atom_t<Value> &atom) {
     auto &lock = s_locks[lock_ix_of(&atom)];
     while (true) {
       auto s = lock.m_clock.load();
-      if (s < ~s) {
+      if (0 <= static_cast<signed_clock_t>(s)) {
         Value result = atom.m_value.load();
         if (s == lock.m_clock.load())
           return result;
