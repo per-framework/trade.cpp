@@ -24,9 +24,9 @@ auto smoke_test = test([]() {
   {
     atomically([&]() {
       int x = xA;
-      int z = zA;
+      int z = zA.load();
       xA = z;
-      zA = x;
+      zA.store(x);
     });
 
     verify(3 == xA.unsafe_load());
@@ -35,7 +35,7 @@ auto smoke_test = test([]() {
   }
 
   {
-    auto r = atomically([&]() { return xA + 1; });
+    auto r = atomically([&]() { return xA.ref() + 1; });
 
     verify(r == 4);
     verify(3 == xA.unsafe_load());

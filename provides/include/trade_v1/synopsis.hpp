@@ -1,6 +1,6 @@
 #pragma once
 
-#include "trade_v1/private.hpp"
+#include "trade_v1/private/atom.hpp"
 
 /// A transactional locking library.
 namespace trade_v1 {

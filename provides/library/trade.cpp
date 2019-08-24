@@ -5,6 +5,12 @@
 #include <cstdlib>
 #include <mutex>
 
+struct trade_v1::Private::waiter_t {
+  waiter_t *m_next;
+  waiter_t **m_link;
+  signal_t *m_signal;
+};
+
 thread_local uint32_t trade_v1::Private::backoff_t::s_seed;
 
 trade_v1::Private::lock_t trade_v1::Private::s_locks[n_locks];

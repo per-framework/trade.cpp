@@ -24,36 +24,53 @@ class Private {
 
   friend void retry();
 
-  struct signal_t;
-  struct waiter_t;
-  struct lock_t;
+  //
+
+  struct Static;
+
+  //
 
   struct backoff_t;
 
-  static void signal(waiter_t *work);
+  template <class Value> class non_atomic_t;
+
+  //
 
   class atom_mono_t;
-
   template <class Value> class atom_t;
-  template <class Value> class non_atomic_t;
+
+  //
+
+  struct signal_t;
+  struct waiter_t;
+  struct lock_t;
 
   using clock_t = uint64_t;
   using signed_clock_t = int64_t;
   using lock_ix_t = int16_t;
 
   static constexpr lock_ix_t n_locks = 251;
-
   static lock_t s_locks[n_locks];
-
-  static lock_ix_t lock_ix_of(const atom_mono_t *atom);
 
   static std::atomic<clock_t> s_clock;
 
+  //
+
+  using state_t = uint8_t;
+  static constexpr state_t INITIAL = 0, READ = 1, WRITTEN = 2;
+
   struct access_base_t;
+
   template <class Value,
             bool is_trivially_destructible =
                 std::is_trivially_destructible_v<Value>>
   struct access_t;
+
+  using destroy_t = void (*)(clock_t t, access_base_t *self);
+
+  template <class Value> static void destroy(clock_t t, access_base_t *access);
+
+  //
 
   struct transaction_base_t;
   struct transaction_heap_t;
@@ -61,32 +78,28 @@ class Private {
 
   thread_local static transaction_base_t *s_transaction;
 
+  //
+
+  template <class Transaction, class Result> struct run_t;
+
+  static lock_ix_t lock_ix_of(const atom_mono_t *atom);
+
+  static void signal(waiter_t *work);
+
   static access_base_t *insert(transaction_base_t *transaction,
                                atom_mono_t *atom,
                                size_t align_m1,
                                size_t size);
 
-  static void destroy(transaction_base_t *transaction);
-
   template <class Value>
   static access_t<Value> *insert(transaction_base_t *transaction,
                                  atom_t<Value> *atom);
 
-  using state_t = uint8_t;
-  static constexpr state_t INITIAL = 0;
-  static constexpr state_t READ = 1;
-  static constexpr state_t WRITTEN = 2;
+  static void destroy(transaction_base_t *transaction);
 
-  using destroy_t = void (*)(clock_t t, access_base_t *self);
-
-  template <class Value> static void destroy(clock_t t, access_base_t *access);
-
-  struct Static;
-
-  [[noreturn]] static void retry(transaction_base_t *transaction);
   static bool try_commit(transaction_base_t *transaction);
 
-  template <class Transaction, class Result> struct run_t;
+  //
 
   template <class Value> static Value load(const atom_t<Value> &atom);
 
@@ -96,36 +109,8 @@ class Private {
   static Value &store(atom_t<Value> &atom, Forwardable &&value);
 
   template <class Value> static Value &ref(atom_t<Value> &atom);
+
+  [[noreturn]] static void retry(transaction_base_t *transaction);
 };
 
 } // namespace trade_v1
-
-class trade_v1::Private::atom_mono_t {
-  friend class Private;
-};
-
-template <class Value> class trade_v1::Private::non_atomic_t {
-  friend class Private;
-
-  non_atomic_t();
-  non_atomic_t(const Value &value);
-
-  void store(const Value &value, std::memory_order = std::memory_order_relaxed);
-  const Value &load(std::memory_order = std::memory_order_relaxed) const;
-
-  Value m_value;
-};
-
-template <class Value> class trade_v1::Private::atom_t : Private::atom_mono_t {
-  friend class Private;
-  template <class> friend struct trade_v1::atom;
-
-  static constexpr bool is_atomic = !std::is_trivially_copyable_v<Value> ||
-                                    std::atomic<Value>::is_always_lock_free;
-
-  std::conditional_t<is_atomic, std::atomic<Value>, non_atomic_t<Value>>
-      m_value;
-
-  atom_t();
-  atom_t(const Value &value);
-};
