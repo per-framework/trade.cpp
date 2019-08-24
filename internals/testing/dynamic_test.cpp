@@ -114,7 +114,7 @@ auto dynamic_test = test([]() {
     verify(1 == q.size());
     // Intentionally incorrectly assumes readonly:
     atomically(assume_readonly, [&]() {
-      if (!q.is_empty())
+      if (!q.empty())
         q.pop_front();
     });
     verify(0 == q.size());

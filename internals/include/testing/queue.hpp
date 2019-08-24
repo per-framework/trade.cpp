@@ -77,7 +77,7 @@ template <class Value> struct queue_t {
     });
   }
 
-  bool is_empty() {
+  bool empty() {
     return trade::atomically(trade::assume_readonly,
                              [&]() { return !m_first.load(); });
   }

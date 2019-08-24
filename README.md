@@ -117,15 +117,15 @@ On the other hand, the action will only be invoked from the thread that started
 the transaction. So, it is entirely possible to use side-effects safely within
 the action.
 
-For example, given a queue with transactional `is_empty` and `pop_front`
-operations, one could write
+For example, given a queue with transactional `empty` predicate and `pop_front`
+operation, one could write
 
 ```c++
 std::vector<Value> values;
 
 atomically([&]() {
   values.clear();
-  while (!queue.is_empty())
+  while (!queue.empty())
     values.push_back(queue.pop_front());
 });
 ```
