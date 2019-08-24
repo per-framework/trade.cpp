@@ -1,11 +1,11 @@
 #include "trade_v1/trade.hpp"
 
-#include "intrinsics_v1/pause.hpp"
-
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
+
+thread_local uint32_t trade_v1::Private::backoff_t::s_seed;
 
 trade_v1::Private::lock_t trade_v1::Private::s_locks[n_locks];
 
@@ -23,17 +23,14 @@ struct trade_v1::Private::signal_t {
 
 struct trade_v1::Private::Static {
   static clock_t acquire(lock_t &lock) {
+    backoff_t backoff;
     while (true) {
       auto u = lock.m_clock.load(std::memory_order_relaxed);
-      if (static_cast<signed_clock_t>(u) < 0) {
-        intrinsics::pause();
-        continue;
-      }
-
-      if (!lock.m_clock.compare_exchange_weak(u, ~u, std::memory_order_acquire))
-        continue;
-
-      return u;
+      if (0 <= static_cast<signed_clock_t>(u))
+        if (lock.m_clock.compare_exchange_weak(
+                u, ~u, std::memory_order_acquire))
+          return u;
+      backoff();
     }
   }
 

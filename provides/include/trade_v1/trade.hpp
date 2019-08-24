@@ -5,12 +5,31 @@
 #include "trade_v1/config.hpp"
 
 #include "dumpster_v1/finally.hpp"
+#include "dumpster_v1/ranqd1.hpp"
 
 #include "intrinsics_v1/pause.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <utility>
+
+//
+
+struct trade_v1::Private::backoff_t {
+  backoff_t() : m_count(0) {}
+  void operator()() {
+#if defined(__clang__)
+#pragma unroll 1
+#endif
+    for (auto n = 1 + ((s_seed = dumpster::ranqd1(s_seed)) &
+                       (m_count = 2 * m_count + 1));
+         n;
+         --n)
+      intrinsics::pause();
+  }
+  static thread_local uint32_t s_seed;
+  uint8_t m_count;
+};
 
 //
 
@@ -248,6 +267,7 @@ Value trade_v1::Private::unsafe_load(const atom_t<Value> &atom) {
     return atom.m_value.load(std::memory_order_relaxed);
   } else {
     auto &lock = s_locks[lock_ix_of(&atom)];
+    backoff_t backoff;
     while (true) {
       auto s = lock.m_clock.load();
       if (0 <= static_cast<signed_clock_t>(s)) {
@@ -255,7 +275,7 @@ Value trade_v1::Private::unsafe_load(const atom_t<Value> &atom) {
         if (s == lock.m_clock.load())
           return result;
       }
-      intrinsics::pause();
+      backoff();
     }
   }
 }

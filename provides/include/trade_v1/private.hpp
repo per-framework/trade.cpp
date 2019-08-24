@@ -28,6 +28,8 @@ class Private {
   struct waiter_t;
   struct lock_t;
 
+  struct backoff_t;
+
   static void signal(waiter_t *work);
 
   class atom_mono_t;
