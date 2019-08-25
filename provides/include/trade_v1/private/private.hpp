@@ -110,6 +110,10 @@ class Private {
 
   template <class Value> static Value &ref(atom_t<Value> &atom);
 
+  template <class Config, class Action>
+  static std::invoke_result_t<Action> atomically(Config config,
+                                                 Action &&action);
+
   [[noreturn]] static void retry(transaction_base_t *transaction);
 };
 

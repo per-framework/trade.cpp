@@ -128,3 +128,16 @@ template <class Value> Value &trade_v1::Private::ref(atom_t<Value> &atom) {
   }
   return access->m_current;
 }
+
+template <class Config, class Action>
+std::invoke_result_t<Action> trade_v1::Private::atomically(Config config,
+                                                           Action &&action) {
+  return s_transaction
+             ? std::forward<Action>(action)()
+             : run_t<std::conditional_t<std::is_same_v<Config, heap>,
+                                        transaction_heap_t,
+                                        transaction_stack_t<Config>>,
+                     std::invoke_result_t<Action>>::run(config,
+                                                        std::forward<Action>(
+                                                            action));
+}

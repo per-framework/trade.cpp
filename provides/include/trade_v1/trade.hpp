@@ -42,18 +42,12 @@ Value &trade_v1::atom<Value>::store(Forwardable &&value) {
 template <class Config, class Action>
 std::invoke_result_t<Action> trade_v1::atomically(Config config,
                                                   Action &&action) {
-  return Private::s_transaction
-             ? action()
-             : Private::run_t<
-                   std::conditional_t<std::is_same_v<Config, heap>,
-                                      Private::transaction_heap_t,
-                                      Private::transaction_stack_t<Config>>,
-                   std::invoke_result_t<Action>>::run(config, action);
+  return Private::atomically(config, std::forward<Action>(action));
 }
 
 template <class Action>
 std::invoke_result_t<Action> trade_v1::atomically(Action &&action) {
-  return atomically(stack<1024>, action);
+  return atomically(stack<1024>, std::forward<Action>(action));
 }
 
 inline void trade_v1::retry() { Private::retry(Private::s_transaction); }

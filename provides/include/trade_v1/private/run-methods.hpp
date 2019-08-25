@@ -1,6 +1,7 @@
 #pragma once
 
 #include "trade_v1/private/run.hpp"
+#include "trade_v1/private/transaction.hpp"
 
 #include "trade_v1/config.hpp"
 
