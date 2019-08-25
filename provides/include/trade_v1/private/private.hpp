@@ -54,6 +54,11 @@ class Private {
 
   //
 
+  struct meta_t;
+  template <class Value> struct meta;
+
+  //
+
   using state_t = uint8_t;
   static constexpr state_t INITIAL = 0, READ = 1, WRITTEN = 2;
 
@@ -86,8 +91,7 @@ class Private {
 
   static access_base_t *insert(transaction_base_t *transaction,
                                atom_mono_t *atom,
-                               size_t align_m1,
-                               size_t size);
+                               const meta_t &meta);
 
   template <class Value>
   static access_t<Value> *insert(transaction_base_t *transaction,

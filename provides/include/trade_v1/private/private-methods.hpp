@@ -3,6 +3,7 @@
 #include "trade_v1/config.hpp"
 #include "trade_v1/private/access-methods.hpp"
 #include "trade_v1/private/lock.hpp"
+#include "trade_v1/private/meta.hpp"
 #include "trade_v1/private/transaction-methods.hpp"
 
 #include "molecular_v1/backoff.hpp"
@@ -36,10 +37,8 @@ template <class Value>
 trade_v1::Private::access_t<Value> *
 trade_v1::Private::insert(transaction_base_t *transaction,
                           atom_t<Value> *atom) {
-  return static_cast<access_t<Value> *>(insert(transaction,
-                                               atom,
-                                               alignof(access_t<Value>) - 1,
-                                               sizeof(access_t<Value>)));
+  return static_cast<access_t<Value> *>(
+      insert(transaction, atom, meta<Value>::s_instance));
 }
 
 template <class Value>
@@ -48,7 +47,6 @@ Value trade_v1::Private::load(const atom_t<Value> &atom) {
   if (transaction->m_alloc) {
     auto access = insert(transaction, const_cast<atom_t<Value> *>(&atom));
     if (access->m_state == INITIAL) {
-      access->m_destroy = destroy<Value>;
       auto &lock = s_locks[access->m_lock_ix];
       auto s = lock.m_clock.load();
       if (transaction->m_start < s)
@@ -96,7 +94,6 @@ Value &trade_v1::Private::store(atom_t<Value> &atom, Forwardable &&value) {
   switch (access->m_state) {
   case INITIAL:
     new (&access->m_current) Value(std::forward<Forwardable>(value));
-    access->m_destroy = destroy<Value>;
     access->m_state = WRITTEN;
     break;
   case READ:
@@ -114,7 +111,6 @@ template <class Value> Value &trade_v1::Private::ref(atom_t<Value> &atom) {
   auto access = insert(transaction, &atom);
   switch (access->m_state) {
   case INITIAL: {
-    access->m_destroy = destroy<Value>;
     auto &lock = s_locks[access->m_lock_ix];
     auto s = lock.m_clock.load();
     if (transaction->m_start < s)

@@ -1,4 +1,5 @@
 #include "trade_v1/trade.hpp"
+#include "trade_v1/private/meta.hpp"
 
 #include <condition_variable>
 #include <cstdio>
@@ -153,20 +154,20 @@ struct trade_v1::Private::Static {
 trade_v1::Private::access_base_t *
 trade_v1::Private::insert(transaction_base_t *transaction,
                           atom_mono_t *access_atom,
-                          size_t align_m1,
-                          size_t size) {
+                          const meta_t &meta) {
   auto root = transaction->m_accesses;
 
   auto access_ix = lock_ix_of(access_atom);
 
   if (!root) {
-    auto access = Static::alloc_align(transaction, align_m1);
-    if (Static::alloc_limit(transaction, access, size)) {
+    auto access = Static::alloc_align(transaction, meta.m_access_align_m1);
+    if (Static::alloc_limit(transaction, access, meta.m_access_size)) {
       access->m_children[0] = nullptr;
       access->m_children[1] = nullptr;
       access->m_atom = access_atom;
       access->m_state = INITIAL;
       access->m_lock_ix = access_ix;
+      access->m_destroy = meta.m_destroy;
       return transaction->m_accesses = access;
     } else {
       throw transaction;
@@ -188,13 +189,14 @@ trade_v1::Private::insert(transaction_base_t *transaction,
         *side_near[0] = nullptr;
         *side_near[1] = root->m_children[1];
         root->m_children[1] = side_root[1];
-        auto access = Static::alloc_align(transaction, align_m1);
-        if (Static::alloc_limit(transaction, access, size)) {
+        auto access = Static::alloc_align(transaction, meta.m_access_align_m1);
+        if (Static::alloc_limit(transaction, access, meta.m_access_size)) {
           access->m_children[0] = side_root[0];
           access->m_children[1] = root;
           access->m_atom = access_atom;
           access->m_state = INITIAL;
           access->m_lock_ix = access_ix;
+          access->m_destroy = meta.m_destroy;
           return transaction->m_accesses = access;
         } else {
           root->m_children[0] = side_root[0];
@@ -213,13 +215,15 @@ trade_v1::Private::insert(transaction_base_t *transaction,
         if (!next) {
           *side_near[0] = nullptr;
           *side_near[1] = root;
-          auto access = Static::alloc_align(transaction, align_m1);
-          if (Static::alloc_limit(transaction, access, size)) {
+          auto access =
+              Static::alloc_align(transaction, meta.m_access_align_m1);
+          if (Static::alloc_limit(transaction, access, meta.m_access_size)) {
             access->m_children[0] = side_root[0];
             access->m_children[1] = side_root[1];
             access->m_atom = access_atom;
             access->m_state = INITIAL;
             access->m_lock_ix = access_ix;
+            access->m_destroy = meta.m_destroy;
             return transaction->m_accesses = access;
           } else {
             root->m_children[0] = side_root[0];
@@ -239,13 +243,14 @@ trade_v1::Private::insert(transaction_base_t *transaction,
         *side_near[0] = root->m_children[0];
         *side_near[1] = nullptr;
         root->m_children[0] = side_root[0];
-        auto access = Static::alloc_align(transaction, align_m1);
-        if (Static::alloc_limit(transaction, access, size)) {
+        auto access = Static::alloc_align(transaction, meta.m_access_align_m1);
+        if (Static::alloc_limit(transaction, access, meta.m_access_size)) {
           access->m_children[0] = root;
           access->m_children[1] = side_root[1];
           access->m_atom = access_atom;
           access->m_state = INITIAL;
           access->m_lock_ix = access_ix;
+          access->m_destroy = meta.m_destroy;
           return transaction->m_accesses = access;
         } else {
           root->m_children[1] = side_root[1];
@@ -264,13 +269,15 @@ trade_v1::Private::insert(transaction_base_t *transaction,
         if (!next) {
           *side_near[0] = root;
           *side_near[1] = nullptr;
-          auto access = Static::alloc_align(transaction, align_m1);
-          if (Static::alloc_limit(transaction, access, size)) {
+          auto access =
+              Static::alloc_align(transaction, meta.m_access_align_m1);
+          if (Static::alloc_limit(transaction, access, meta.m_access_size)) {
             access->m_children[0] = side_root[0];
             access->m_children[1] = side_root[1];
             access->m_atom = access_atom;
             access->m_state = INITIAL;
             access->m_lock_ix = access_ix;
+            access->m_destroy = meta.m_destroy;
             return transaction->m_accesses = access;
           } else {
             root->m_children[1] = side_root[1];
