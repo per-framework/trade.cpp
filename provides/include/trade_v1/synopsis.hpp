@@ -7,6 +7,9 @@ namespace trade_v1 {
 
 /// Type of transactional variables or atoms.
 template <class Value> struct atom : Private::atom_t<Value> {
+  /// Type of contained value.
+  using value_type = Value;
+
   /// Constructs an atom initialized with default constructed value.
   atom();
 
