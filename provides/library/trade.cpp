@@ -322,9 +322,14 @@ void trade_v1::Private::retry(transaction_base_t *transaction) {
         *tail, [&](auto node) { Static::append_to(&tail, node); });
   }
 
-  signal_t signal;
-
-  Static::wait(transaction->m_start, signal, transaction->m_accesses);
+  if (auto root = transaction->m_accesses) {
+    signal_t signal;
+    Static::wait(transaction->m_start, signal, root);
+  } else {
+    auto limit = transaction->m_limit;
+    if (!limit)
+      transaction->m_alloc = limit + 1;
+  }
 
   throw transaction;
 }
