@@ -45,7 +45,7 @@ auto contention_test = test([]() {
     }).detach();
   }
 
-  atomically([&]() {
+  atomically(assume_readonly, [&]() {
     if (n_threads_stopped != n_threads)
       retry();
   });
