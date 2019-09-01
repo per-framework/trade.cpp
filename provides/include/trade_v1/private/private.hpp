@@ -47,9 +47,9 @@ class Private {
 
   using clock_t = uint64_t;
   using signed_clock_t = int64_t;
-  using lock_ix_t = int16_t;
+  using lock_ix_t = int32_t;
 
-  static constexpr lock_ix_t n_locks = 251;
+  static constexpr lock_ix_t n_locks = 131071;
   static lock_t s_locks[n_locks];
 
   static std::atomic<clock_t> s_clock;
