@@ -13,11 +13,11 @@ using namespace trade_v1;
 
 auto contention_test = test([]() {
   const size_t n_threads = std::thread::hardware_concurrency();
-  const size_t n_ops = 100000;
+  const size_t n_ops = 1000000;
 
   atom<size_t> n_threads_started = 0, n_threads_stopped = 0;
 
-  constexpr size_t n_atoms = 7;
+  constexpr size_t n_atoms = 7000;
 
   std::unique_ptr<atom<int>[]> atoms(new atom<int>[n_atoms]);
   for (size_t i = 0; i < n_atoms; ++i)
