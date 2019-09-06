@@ -97,7 +97,7 @@ Value &trade_v1::Private::store(atom_t<Value> &atom, Forwardable &&value) {
     access->m_state = WRITTEN;
     break;
   case READ:
-    access->retain();
+    access->retain_move();
     access->m_state = READ + WRITTEN;
     [[fallthrough]];
   default:
@@ -123,7 +123,7 @@ template <class Value> Value &trade_v1::Private::ref(atom_t<Value> &atom) {
     [[fallthrough]];
   }
   case READ:
-    access->retain();
+    access->retain_copy();
     access->m_state = READ + WRITTEN;
   }
   return access->m_current;

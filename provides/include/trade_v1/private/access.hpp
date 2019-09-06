@@ -17,7 +17,8 @@ struct trade_v1::Private::access_t<Value, false> : access_base_t {
   Value m_current;
   Value m_original;
 
-  void retain();
+  void retain_copy();
+  void retain_move();
   void destroy();
 };
 
@@ -27,6 +28,7 @@ struct trade_v1::Private::access_t<Value, true> : access_base_t {
 
   Value m_current;
 
-  void retain();
+  void retain_copy();
+  void retain_move();
   void destroy();
 };
