@@ -82,4 +82,13 @@ auto smoke_test = test([]() {
     } catch (const std::bad_alloc &) {
     }
   }
+
+  {
+    atom<std::shared_ptr<int>> an_int(std::make_shared<int>(101));
+
+    atomically([&]() {
+      verify(!!an_int.load());
+      verify(!!an_int.ref());
+    });
+  }
 });
