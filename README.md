@@ -15,8 +15,8 @@ work like a natural part of C++ and a portable implementation that can be used
 today for prototyping parallel algorithms using transactional memory.
 
 See [`synopsis.hpp`](provides/include/trade_v1/synopsis.hpp) for the API and
-[`queue.hpp`](internals/include/testing/queue.hpp) for a transactional queue
-implementation written for testing purposes.
+[`queue_tm.hpp`](internals/include/testing/queue_tm.hpp) for a transactional
+queue implementation written for testing purposes.
 
 ## <a id="contents"></a> [≡](#contents) [Contents](#contents)
 
@@ -190,7 +190,7 @@ For example, a transactional dynamic queue data structure could be defined with
 the help of `std::shared_ptr` as
 
 ```c++
-template <class Value> struct queue_t {
+template <class Value> struct queue_tm {
   using value_t = Value;
   // ...
 private:

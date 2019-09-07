@@ -1,4 +1,4 @@
-#include "testing/queue.hpp"
+#include "testing/queue_tm.hpp"
 
 #include "testing_v1/test.hpp"
 
@@ -17,7 +17,7 @@ auto dynamic_test = test([]() {
 
   atom<size_t> n_threads_started = 0, n_threads_stopped = 0;
 
-  queue_t<int> queues[2];
+  queue_tm<int> queues[2];
 
   constexpr size_t n_values = 10;
   for (size_t i = 0; i < n_values; ++i)
@@ -35,8 +35,8 @@ auto dynamic_test = test([]() {
       while (n) {
         int r = std::rand();
 
-        queue_t<int> &q1 = queues[r & 1];
-        queue_t<int> &q2 = queues[(r & 2) >> 1];
+        queue_tm<int> &q1 = queues[r & 1];
+        queue_tm<int> &q2 = queues[(r & 2) >> 1];
 
         // Here we perform a composed transaction that tries to move a value
         // from one queue to (possibly) another queue atomically:
@@ -85,7 +85,7 @@ auto dynamic_test = test([]() {
     verify(values[i] == static_cast<int>(i));
 
   {
-    queue_t<int> q;
+    queue_tm<int> q;
     q.push_back(1);
 
     {
@@ -120,5 +120,5 @@ auto dynamic_test = test([]() {
     verify(0 == q.size());
   }
 
-  verify(!queue_t<int>::s_live_nodes);
+  verify(!queue_tm<int>::s_live_nodes);
 });

@@ -11,13 +11,13 @@
 namespace testing {
 
 /// A transactional queue for testing purposes.
-template <class Value> struct queue_t {
+template <class Value> struct queue_tm {
   using value_t = Value;
 
-  queue_t() = default;
+  queue_tm() = default;
 
-  queue_t(const queue_t &) = delete;
-  queue_t &operator=(const queue_t &) = delete;
+  queue_tm(const queue_tm &) = delete;
+  queue_tm &operator=(const queue_tm &) = delete;
 
   size_t size() {
     return trade::atomically(trade::assume_readonly, [&]() {
@@ -104,6 +104,6 @@ private:
   trade::atom<std::shared_ptr<node_t>> m_last;
 };
 
-template <class Value> std::atomic<size_t> queue_t<Value>::s_live_nodes = 0;
+template <class Value> std::atomic<size_t> queue_tm<Value>::s_live_nodes = 0;
 
 } // namespace testing

@@ -1,4 +1,4 @@
-#include "testing/queue.hpp"
+#include "testing/queue_tm.hpp"
 
 #include "testing_v1/test.hpp"
 
@@ -10,7 +10,7 @@ using namespace trade_v1;
 using namespace testing;
 
 auto retry_test = test([]() {
-  queue_t<size_t> queues[2];
+  queue_tm<size_t> queues[2];
 
   queues[0].push_back(0);
 
