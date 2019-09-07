@@ -189,18 +189,17 @@ For example, a transactional dynamic queue data structure could be defined with
 the help of `std::shared_ptr` as
 
 ```c++
-template <class Value> struct queue_tm {
-  using value_t = Value;
-  // ...
-private:
+template <class Value> class queue_tm {
   struct node_t {
     atom<std::shared_ptr<node_t>> m_next;
-    value_t m_value;
-    node_t(const value_t &value) : m_value(value) {}
+    Value m_value;
+    node_t(const Value &value) : m_value(value) {}
   };
 
   atom<std::shared_ptr<node_t>> m_first;
   atom<std::shared_ptr<node_t>> m_last;
+
+  // ...
 };
 ```
 

@@ -120,5 +120,7 @@ auto dynamic_test = test([]() {
     verify(0 == q.size());
   }
 
+#ifndef NDEBUG
   verify(!queue_tm<int>::s_live_nodes);
+#endif
 });
