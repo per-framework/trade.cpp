@@ -33,7 +33,6 @@ queue implementation written for testing purposes.
   - [Atomic types only](#atomic-types-only)
   - [Exceptions](#exceptions)
 - [Trade-offs](#trade-offs)
-- [TODO](#todo)
 
 ## <a id="overview"></a> [≡](#contents) [Overview](#overview)
 
@@ -338,12 +337,3 @@ transaction.
 - The use of exceptions for aborting transactions may be expensive and may also
   prohibit or complicate use in cases like embedded systems where exception
   handling might be turned off to reduce code size.
-
-## <a id="todo"></a> [≡](#contents) [TODO](#todo)
-
-- Bypass destroy logic in cases where it is not needed
-- Add optional diagnostics code to e.g. detect bad behaviours
-- Allow transaction clock to wrap around &mdash; this would allow the use of a
-  32-bit (or `size_t`) clock
-- Consider allowing number of locks to change dynamically
-- Refactor and micro-optimize
