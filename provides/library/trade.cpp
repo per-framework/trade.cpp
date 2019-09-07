@@ -411,5 +411,8 @@ bool trade_v1::Private::try_commit(transaction_base_t *transaction) {
   for (auto it = writes.m_children[1]; it; it = it->m_children[1])
     it->m_destroy(u, it);
 
+  for (auto it = writes.m_children[1]; it; it = it->m_children[1])
+    it->m_destroy(0, it);
+
   return true;
 }

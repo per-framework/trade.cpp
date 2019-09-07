@@ -25,8 +25,9 @@ void trade_v1::Private::destroy(clock_t t, access_base_t *access_base) {
         signal(first);
       lock.m_clock.store(t, std::memory_order_release);
     }
+  } else {
+    access->destroy();
   }
-  access->destroy();
 }
 
 template <class Value>
