@@ -7,12 +7,22 @@ A transactional locking implementation for C++. Based on basic ideas from
 <dd>Dave Dice, Ori Shalev, and Nir Shavit</dd>
 </dl>
 
-this simple variation uses a hash table of locks, a splay tree to maintain an
-access set, and attempts locks in address order.
+this simple variation uses a hash table of locks, a
+[splay tree](https://en.wikipedia.org/wiki/Splay_tree) to maintain an access
+set, and attempts locks in address order.
+
+In a nutshell one could describe transactional locking as allowing you to write
+concurrent and parallel programs roughly as easily as if you only had a single
+global [mutex](https://en.cppreference.com/w/cpp/thread/mutex) and a single
+global
+[condition variable](https://en.cppreference.com/w/cpp/thread/condition_variable)
+while providing a performance profile more like that of highly fine-grained
+locking.
 
 The goal of this library is to provide an API that makes transactional locking
 work like a natural part of C++ and a portable implementation that can be used
-today for prototyping parallel algorithms using transactional memory.
+_today_ for prototyping parallel algorithms using
+[transactional memory](https://en.wikipedia.org/wiki/Software_transactional_memory).
 
 See [`synopsis.hpp`](provides/include/trade_v1/synopsis.hpp) for the API and
 [`queue_tm.hpp`](internals/include/testing/queue_tm.hpp) for a transactional
@@ -48,7 +58,7 @@ cppsm test
 ```
 
 Without the [C++ submodule manager](https://cppsm.github.io/) you need to
-non-recursively update the submodules after cloning and use
+**non-recursively** update the submodules after cloning and use
 [CMake](https://cmake.org/) to e.g. generate makefiles and use
 [make](https://www.gnu.org/software/make/) to build and test:
 
@@ -109,15 +119,17 @@ multiple times.
 ### <a id="side-effects"></a> [≡](#contents) [Side-effects](#side-effects)
 
 The action given to `atomically` may be invoked many times. Therefore it is
-important that the action does not perform any side-effects that must not be
-repeated.
+important that the action does not perform any
+[side-effects](<https://en.wikipedia.org/wiki/Side_effect_(computer_science)>)
+that must not be repeated.
 
 On the other hand, the action will only be invoked from the thread that started
 the transaction. So, it is entirely possible to use side-effects safely within
 the action.
 
-For example, given a queue with transactional `empty` predicate and `pop_front`
-operation, one could write
+For example, given a
+[queue](<https://en.wikipedia.org/wiki/Queue_(abstract_data_type)>) with
+transactional `empty` predicate and `pop_front` operation, one could write
 
 ```c++
 std::vector<Value> values;
@@ -129,9 +141,9 @@ atomically([&]() {
 });
 ```
 
-to transactionally pop the values off of the queue and push them into a vector.
-It is important that the `values` vector is cleared at the beginning of the
-action.
+to transactionally pop the values off of the queue and push them into a
+[vector](https://en.cppreference.com/w/cpp/container/vector). It is important
+that the `values` vector is cleared at the beginning of the action.
 
 ### <a id="nesting"></a> [≡](#contents) [Nesting](#nesting)
 
@@ -156,9 +168,9 @@ other transaction may observe a state where the element is not in either queue.
 ### <a id="blocking"></a> [≡](#contents) [Blocking](#blocking)
 
 An atomically block can call `retry` at any point to stop running the
-transaction and block waiting for other threads to make changes to atoms read
-during the transaction. Once such changes have been made, the transaction will
-be restarted.
+transaction and [block](<https://en.wikipedia.org/wiki/Blocking_(computing)>)
+waiting for other threads to make changes to atoms read during the transaction.
+Once such changes have been made, the transaction will be restarted.
 
 For example, given a queue with a transactional `try_pop_front` operation
 returning an optional value, one could write
@@ -276,15 +288,18 @@ atomically(stack<64>, [&]() { atom = 101; });
 and avoid wasting stack.
 
 In case a transaction runs out of log space, the transaction will be aborted by
-raising the `std::bad_alloc` exception.
+raising the
+[`std::bad_alloc`](https://en.cppreference.com/w/cpp/memory/new/bad_alloc)
+exception.
 
 Note that only the allocation configuration of the outermost `atomically` call
-is considered in nested transactions.
+is considered in [nested transactions](#nesting).
 
 ### <a id="atomic-types-only"></a> [≡](#contents) [Atomic types only](#atomic-types-only)
 
 The type argument `T` of `atom<T>` must also be allowed as an argument to
-`std::atomic`. Unless the type `T` is
+[`std::atomic`](https://en.cppreference.com/w/cpp/atomic/atomic). Unless the
+type `T` is
 [TriviallyCopyable](https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable)
 and `std::atomic<T>` is not always lock-free, an atom stores the value in a
 `std::atomic<T>`. This allows efficient implementation of the necessary
@@ -293,10 +308,10 @@ stored in an atom.
 
 ### <a id="exceptions"></a> [≡](#contents) [Exceptions](#exceptions)
 
-Invalid accesses and `retry` raise exceptions. User code inside transactions
-should let such exceptions fall through to the handler in the outermost
-`atomically` block. The action given to `atomically` may throw other exceptions
-&mdash; such exceptions will be allowed to fall through and abort the
+Invalid accesses and [`retry`](#blocking) raise exceptions. User code inside
+transactions should let such exceptions fall through to the handler in the
+outermost `atomically` block. The action given to `atomically` may throw other
+exceptions &mdash; such exceptions will be allowed to fall through and abort the
 transaction.
 
 ## <a id="trade-offs"></a> [≡](#contents) [Trade-offs](#trade-offs)
@@ -316,22 +331,25 @@ transaction.
 
   - user code cannot observe inconsistent memory states.
 
-- The use of hashed locks may cause false sharing (as multiple atoms may hash to
-  a single lock) and in the unlikely worst case performance may degrade to the
-  point where it is equivalent to having a single global lock.
+- The use of hashed locks may cause
+  [false sharing](https://en.wikipedia.org/wiki/False_sharing) (as multiple
+  atoms may hash to a single lock) and in the unlikely worst case performance
+  may degrade to the point where it is equivalent to having a single global
+  lock.
 
 - The hash computation adds some overhead to every access.
 
 - On the other hand, the size of an `atom<T>` is not larger than the size of
   `std::atomic<T>`, which is practically optimal.
 
-- Adds a `retry` capability for blocking. This also takes minor advantage of the
-  use of hashed locks.
+- Adds a [`retry`](#blocking) capability for blocking. This also takes minor
+  advantage of the use of hashed locks.
 
-- Every access of an atom potentially involves loading a thread-local variable.
+- Every access of an atom potentially involves loading a
+  [thread-local variable](https://en.wikipedia.org/wiki/Thread-local_storage).
   Ideally a good compiler would be able to eliminate many thread-local accesses,
-  but that does not seem to happen. This definitely adds a certain amount of
-  overhead to accesses.
+  but that does not seem to happen. This adds a certain amount of overhead to
+  accesses.
 
 - The use of exceptions for aborting transactions may be expensive and may also
   prohibit or complicate use in cases like embedded systems where exception
