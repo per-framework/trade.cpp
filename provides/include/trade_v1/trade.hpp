@@ -39,6 +39,11 @@ Value &trade_v1::atom<Value>::store(Forwardable &&value) {
   return Private::store(*this, std::forward<Forwardable>(value));
 }
 
+template <class Value>
+const Value &trade_v1::atom<Value>::unsafe_store(const Value &value) {
+  return Private::unsafe_store(*this, value);
+}
+
 template <class Config, class Action>
 std::invoke_result_t<Action> trade_v1::atomically(Config config,
                                                   Action &&action) {

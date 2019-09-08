@@ -41,6 +41,11 @@ template <class Value> struct atom : Private::atom_t<Value> {
   /// value` is equivalent to `atom.store(value)`.
   template <class Forwardable> Value &store(Forwardable &&value);
 
+  /// Store the given value to the given atom as a single transaction.  Note
+  /// that this cannot be used safely inside an `atomically` block, because it
+  /// can prevent the `atomically` block from ever completing.
+  const Value &unsafe_store(const Value &value);
+
   /// Returns a mutable reference to the current value of the atom within a
   /// transaction.  `atom.ref()` is roughly equivalent to
   /// `atom.store(atom.load())`, but accesses the transaction log only once.

@@ -109,6 +109,27 @@ Value &trade_v1::Private::store(atom_t<Value> &atom, Forwardable &&value) {
   return access->m_current;
 }
 
+template <class Value>
+const Value &trade_v1::Private::unsafe_store(atom_t<Value> &atom,
+                                             const Value &value) {
+  auto &lock = s_locks[lock_ix_of(&atom)];
+  molecular::backoff backoff;
+  while (true) {
+    auto u = lock.m_clock.load();
+    if (0 <= static_cast<signed_clock_t>(u)) {
+      if (lock.m_clock.compare_exchange_weak(
+              u, ~u, std::memory_order_acquire)) {
+        atom.m_value.store(value, std::memory_order_relaxed);
+        if (auto first = lock.m_first)
+          signal(first);
+        lock.m_clock.store(s_clock++, std::memory_order_release);
+        return value;
+      }
+    }
+    backoff();
+  }
+}
+
 template <class Value> Value &trade_v1::Private::ref(atom_t<Value> &atom) {
   auto transaction = s_transaction;
   auto access = insert(transaction, &atom);

@@ -106,6 +106,9 @@ class Private {
   template <class Value, class Forwardable>
   static Value &store(atom_t<Value> &atom, Forwardable &&value);
 
+  template <class Value>
+  static const Value &unsafe_store(atom_t<Value> &atom, const Value &value);
+
   template <class Value> static Value &ref(atom_t<Value> &atom);
 
   template <class Config, class Action>

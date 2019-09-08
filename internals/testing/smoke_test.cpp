@@ -9,11 +9,13 @@ using namespace trade_v1;
 
 auto smoke_test = test([]() {
   atom<int> xA = 1;
-  atom<float> yA = 2.f;
+  atom<float> yA = 1.f;
   atom<int> zA = 3;
   atom<std::shared_ptr<int>> p(std::make_shared<int>(32));
 
   verify(atomically(assume_readonly, []() { return true; }));
+
+  yA.unsafe_store(2);
 
   {
     verify(1 == xA.unsafe_load());
