@@ -6,14 +6,16 @@
 #include <optional>
 #include <vector>
 
-#include "testing/config.hpp"
+#include "testing/counted_ptr.hpp"
 
 namespace testing {
 
 /// A transactional queue for testing purposes.
 template <class Value> class queue_tm {
+  template <class T> using ptr_t = counted_ptr<T>;
+
   struct node_t {
-    trade::atom<std::shared_ptr<node_t>> m_next;
+    trade::atom<ptr_t<node_t>> m_next;
     Value m_value;
 #ifndef NDEBUG
     ~node_t() { --s_live_nodes; }
@@ -27,8 +29,8 @@ template <class Value> class queue_tm {
     }
   };
 
-  trade::atom<std::shared_ptr<node_t>> m_first;
-  trade::atom<std::shared_ptr<node_t>> m_last;
+  trade::atom<ptr_t<node_t>> m_first;
+  trade::atom<ptr_t<node_t>> m_last;
 
 public:
   using value_t = Value;
@@ -80,8 +82,7 @@ template <class Value> void queue_tm<Value>::clear() {
 template <class Value>
 template <class ForwardableValue>
 void queue_tm<Value>::push_back(ForwardableValue &&value) {
-  std::shared_ptr<node_t> node(
-      new node_t(std::forward<ForwardableValue>(value)));
+  ptr_t<node_t> node(new node_t(std::forward<ForwardableValue>(value)));
   trade::atomically([&]() {
     if (auto prev = m_last.load())
       prev->m_next = m_last = node;
@@ -93,8 +94,7 @@ void queue_tm<Value>::push_back(ForwardableValue &&value) {
 template <class Value>
 template <class ForwardableValue>
 void queue_tm<Value>::push_front(ForwardableValue &&value) {
-  std::shared_ptr<node_t> node(
-      new node_t(std::forward<ForwardableValue>(value)));
+  ptr_t<node_t> node(new node_t(std::forward<ForwardableValue>(value)));
   trade::atomically([&]() {
     if (auto next = m_first.load()) {
       m_first = node;
