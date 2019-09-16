@@ -30,8 +30,6 @@ class Private {
 
   //
 
-  struct backoff_t;
-
   template <class Value> class non_atomic_t;
 
   //

@@ -1,9 +1,11 @@
 #pragma once
 
+#include "trade_v1/config.hpp"
 #include "trade_v1/private/access-methods.hpp"
-#include "trade_v1/private/backoff-methods.hpp"
 #include "trade_v1/private/lock.hpp"
 #include "trade_v1/private/transaction-methods.hpp"
+
+#include "molecular_v1/backoff.hpp"
 
 #include <utility>
 
@@ -75,7 +77,7 @@ Value trade_v1::Private::unsafe_load(const atom_t<Value> &atom) {
     return atom.m_value.load(std::memory_order_relaxed);
   } else {
     auto &lock = s_locks[lock_ix_of(&atom)];
-    backoff_t backoff;
+    molecular::backoff backoff;
     while (true) {
       auto s = lock.m_clock.load();
       if (0 <= static_cast<signed_clock_t>(s)) {

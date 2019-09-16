@@ -11,8 +11,6 @@ struct trade_v1::Private::waiter_t {
   signal_t *m_signal;
 };
 
-thread_local uint32_t trade_v1::Private::backoff_t::s_seed;
-
 trade_v1::Private::lock_t trade_v1::Private::s_locks[n_locks];
 
 thread_local trade_v1::Private::transaction_base_t
@@ -29,7 +27,7 @@ struct trade_v1::Private::signal_t {
 
 struct trade_v1::Private::Static {
   static clock_t acquire(lock_t &lock) {
-    backoff_t backoff;
+    molecular::backoff backoff;
     while (true) {
       auto u = lock.m_clock.load(std::memory_order_relaxed);
       if (0 <= static_cast<signed_clock_t>(u))

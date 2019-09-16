@@ -18,3 +18,7 @@
 	path = requires/dumpster.cpp/v1
 	url = https://github.com/per-framework/dumpster.cpp.git
 	branch = v1
+[submodule "requires/molecular.cpp/v1"]
+	path = requires/molecular.cpp/v1
+	url = https://github.com/per-framework/molecular.cpp.git
+	branch = v1
