@@ -68,12 +68,9 @@ cd trade.cpp
 git submodule update --init
 mkdir .build
 cd .build
-cmake -DCPPSM=1 ..
+cmake ..
 make all test
 ```
-
-Above the `-DCPPSM=1` option specifies that internal targets should be included,
-which is what you want when you are developing Trade.C++ itself.
 
 If you are not using `cppsm` in your project and just want to use Trade.C++, you
 should be able to just
