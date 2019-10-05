@@ -17,8 +17,8 @@ git:
 
 before_install:
   - export -f travis_nanoseconds travis_time_start travis_time_finish
-  - export GIT_DEPTH=$(if [ 002021000 -le $(git --version | sed -e 's#^[^0-9]*\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\).*$#00\1.00\2.00\3#g' -e 's#[0-9]*\([0-9]\{3\}\)\.*#\1#g') ]; then echo '--depth 1'; fi)
+  - if [ "$TRAVIS_OS_NAME" = windows ]; then choco upgrade -y git.install; fi
 
 script:
-  - if ! [ -x .cppsm/travis-ci ]; then git submodule --quiet update --init --no-recommend-shallow $GIT_DEPTH .cppsm; fi
+  - if ! [ -x .cppsm/travis-ci ]; then git submodule --quiet update --init --no-recommend-shallow --depth 1 .cppsm; fi
   - .cppsm/travis-ci
