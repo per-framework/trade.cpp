@@ -17,7 +17,7 @@ git:
 
 before_install:
   - export -f travis_nanoseconds travis_time_start travis_time_finish
-  - if [ "$TRAVIS_OS_NAME" = windows ]; then choco upgrade -y git.install; fi
+  - if [ "$TRAVIS_OS_NAME" = windows ]; then git --version && choco upgrade -y git.install && git --version && git submodule update --init --depth 1; fi
 
 script:
   - if ! [ -x .cppsm/travis-ci ]; then git submodule --quiet update --init --no-recommend-shallow --depth 1 .cppsm; fi
