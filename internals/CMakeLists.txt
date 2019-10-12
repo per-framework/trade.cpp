@@ -1,0 +1,1 @@
+add_conventional_executable_tests(PRIVATE trade_v2)

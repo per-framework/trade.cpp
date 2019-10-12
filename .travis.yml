@@ -1,0 +1,24 @@
+language: cpp
+
+notifications:
+  email: false
+
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+    - os: osx
+      osx_image: xcode10.2
+    - os: windows
+
+git:
+  depth: 1
+  submodules: false
+
+before_install:
+  - export -f travis_nanoseconds travis_time_start travis_time_finish
+  - if [ "$TRAVIS_OS_NAME" = windows ]; then choco upgrade -y git.install; fi
+
+script:
+  - if ! [ -x .cppsm/travis-ci ]; then git submodule --quiet update --init --no-recommend-shallow --depth 1 .cppsm; fi
+  - .cppsm/travis-ci

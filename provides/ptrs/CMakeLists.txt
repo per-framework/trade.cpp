@@ -1,0 +1,2 @@
+add_conventional_library(trade_ptrs_v2)
+target_link_libraries(trade_ptrs_v2 INTERFACE trade_core_v2)

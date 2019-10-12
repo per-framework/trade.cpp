@@ -1,0 +1,1 @@
+add_conventional_library(trade_core_v2)

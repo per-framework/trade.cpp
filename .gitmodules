@@ -1,0 +1,4 @@
+[submodule ".cppsm"]
+	path = .cppsm
+	url = https://github.com/cppsm/cppsm-boilerplate.git
+	branch = master
